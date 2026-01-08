@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>🧧 2026 世埼尾牙 🧧</title>
+    <title>🧧 2026 世埼尾牙抽獎 🧧</title>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         :root {
@@ -31,7 +31,6 @@
             display: inline-block; padding: 5px 15px; border-radius: 20px;
             font-size: 14px; margin-top: 5px; font-weight: bold;
         }
-        .mode-trial { background: #555; color: white; border: 1px solid #999; }
         .mode-official { background: var(--danger-red); color: white; border: 1px solid var(--primary-gold); box-shadow: 0 0 10px var(--danger-red); }
         .mode-bonus { background: linear-gradient(45deg, #ff00ff, #ff0055); color: white; border: 1px solid #fff; animation: pulse-border 1s infinite alternate; }
         @keyframes pulse-border { from { box-shadow: 0 0 5px #ff00ff; } to { box-shadow: 0 0 20px #ff00ff; } }
@@ -72,6 +71,18 @@
         .btn-action { margin: 20px; padding: 15px 60px; font-size: 1.5em; border-radius: 50px; border: none; cursor: pointer; font-weight: bold; background: linear-gradient(45deg, #FFD700, #ffae00); color: #000; box-shadow: 0 0 20px rgba(255,215,0,0.4); transition: 0.3s; z-index: 5; }
         .btn-action:disabled { filter: grayscale(1); opacity: 0.5; }
 
+        #bonus-prize-modal {
+            display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 450px; background: #1a1a1e; border: 2px solid var(--primary-gold);
+            border-radius: 20px; z-index: 3000; padding: 30px; box-shadow: 0 0 100px rgba(0,0,0,1);
+            text-align: center;
+        }
+        #bonus-list-container {
+            max-height: 250px; overflow-y: auto; display: grid; grid-template-columns: 1fr 1fr;
+            gap: 8px; margin: 20px 0; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 10px;
+        }
+        .participant-name { background: rgba(255,255,255,0.05); padding: 5px; border-radius: 4px; font-size: 0.85em; color: #ccc; }
+
         .history-panel { flex: 0 0 280px; }
         .history-list { list-style: none; padding: 0; font-size: 0.9em; max-height: 500px; overflow-y: auto; }
         .history-list li { padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between;}
@@ -85,29 +96,52 @@
             display: none; position: fixed; top:0; left:0; width:100%; height:100%;
             z-index: 2000; flex-direction: column; align-items: center; justify-content: center; text-align: center;
         }
-        #bonus-announcement { background: radial-gradient(circle, #4a0000, #000); }
+        #bonus-announcement { background: radial-gradient(circle, #800000, #000); }
         #end-thank-you { background: radial-gradient(circle, #1a1a1e, #000); border: 5px solid var(--primary-gold); box-sizing: border-box; }
 
         .big-text { font-size: 5em; font-weight: 900; color: #fff; text-shadow: 0 0 20px var(--primary-gold); margin-bottom: 20px; }
-        .shake-anim { animation: shake 0.5s infinite; }
-        @keyframes shake { 0% {transform: translate(0,0);} 25% {transform: translate(5px,5px);} 50% {transform: translate(-5px,0);} 100% {transform: translate(0,0);} }
 
-        #settings-trigger { position: fixed; bottom: 20px; right: 20px; opacity: 0.3; cursor: pointer; font-size: 24px; z-index: 100; }
-        #celebrate-overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; z-index: 1000; background: rgba(0,0,0,0.8); flex-direction: column; align-items: center; justify-content: center; animation: fadeIn 0.5s forwards; }
+        #settings-trigger { position: fixed; bottom: 20px; right: 20px; opacity: 0.3; cursor: pointer; font-size: 24px; z-index: 100; transition: 0.3s; }
+        #reset-trigger { 
+            position: fixed; top: 25px; left: 25px; 
+            width: 55px; height: 55px; 
+            display: flex; align-items: center; justify-content: center;
+            background: var(--glass); backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 50%;
+            cursor: pointer; font-size: 32px; z-index: 100; opacity: 0.6;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+        }
+        #reset-trigger:hover { 
+            opacity: 1; transform: scale(1.1) rotate(-180deg); 
+            border-color: var(--primary-gold);
+            background: rgba(255, 215, 0, 0.15);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+            color: var(--primary-gold);
+        }
+
+        #celebrate-overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; z-index: 1000; background: rgba(0,0,0,0.8); flex-direction: column; align-items: center; justify-content: center; animation: fadeIn 0.5s forwards; cursor: pointer; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
 </head>
 <body>
 
+    <audio id="sfx-tick" src="https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3" preload="auto"></audio>
+    <audio id="sfx-win" src="https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3" preload="auto"></audio>
+    <audio id="sfx-bonus" src="https://assets.mixkit.co/active_storage/sfx/995/995-preview.mp3" preload="auto"></audio>
+    <audio id="sfx-end" src="https://www.bensound.com/bensound-music/bensound-celebration.mp3" preload="auto" loop></audio>
+
+    <div id="reset-trigger" onclick="manualReset()" title="完全重置抽獎紀錄">🔄</div>
+
     <header>
         <h1>2026 世埼股份有限公司尾牙抽獎</h1>
-        <div id="mode-badge" class="mode-trial">試玩模式 (0 / 6)</div>
+        <div id="mode-badge" class="mode-official">正式抽獎模式</div>
     </header>
 
     <main>
         <div class="info-panel">
             <div class="glass-card">
-                <h3 style="color: var(--primary-gold); margin-top: 0;">🎯 </h3>
+                <h3 style="color: var(--primary-gold); margin-top: 0;">🎯 當前進行獎項...</h3>
                 <div id="target-prize-name" style="font-size: 1.5em; font-weight: bold;">請選擇獎項</div>
                 <div id="target-prize-count" style="color: #aaa;">剩餘名額：-</div>
             </div>
@@ -134,17 +168,24 @@
         </div>
     </main>
 
+    <div id="bonus-prize-modal">
+        <h2 style="color: var(--primary-gold); margin-top: 0;">🧧 加碼獎金 10,000 元 🧧</h2>
+        <p style="color: #aaa; font-size: 14px;">合格復活名單：</p>
+        <div id="bonus-list-container"></div>
+        <button class="btn-action" style="width: 100%; margin: 10px 0;" onclick="startBonusDrawSequence()">開始加碼抽選！</button>
+    </div>
+
     <div id="bonus-announcement">
-        <div class="big-text shake-anim" style="text-shadow: 0 0 20px #ff00ff;">💥 全員復活：加碼時間 💥</div>
-        <h2 style="color: #FFD700; margin: 20px 0;">排除頭獎、二獎及三獎得主，其餘全員進入戰場！</h2>
-        <button class="btn-action" onclick="prepareBonusRound()">進入加碼場戰場</button>
+        <div class="big-text" style="text-shadow: 0 0 30px #ff0000; color: #fff;">🚨 緊急加碼 🚨</div>
+        <h2 style="color: #FFD700; margin: 20px 0; font-size: 2.5em;">除了頭獎、二獎及三獎得主，其餘全員進入戰場！</h2>
+        <button class="btn-action" onclick="prepareBonusRound()" style="background: linear-gradient(45deg, #ff0000, #aa0000); color: white;">進入加碼生死戰</button>
     </div>
 
     <div id="end-thank-you">
         <div class="big-text">✨ 尾牙圓滿結束 ✨</div>
         <h2 style="color: #fff; margin-bottom: 10px;">感謝大家今天的熱情參與</h2>
-        <p style="font-size: 1.5em; color: var(--primary-gold);">祝 世琦股份有限公司 全體同仁 <br>新年快樂，萬事如意，開工大吉！</p>
-        <button class="btn-action" style="margin-top: 50px; font-size: 1em;" onclick="location.reload()">重新開始 (慎用)</button>
+        <p style="font-size: 1.5em; color: var(--primary-gold);">祝 世埼股份有限公司 全體同仁 <br>新年快樂，萬事如意，開工大吉！</p>
+        <button class="btn-action" style="margin-top: 50px; font-size: 1.5em;" onclick="resetGameKeepData()">重新開始抽獎</button>
     </div>
 
     <div id="admin-modal">
@@ -168,14 +209,12 @@
                     </div>
                     <button class="admin-btn" style="width: 100%; margin-top: 10px; background: #28a745; color: white;" onclick="addPrize()">新增獎項</button>
                     <div id="admin-prize-list" style="margin-top: 20px;"></div>
-                    <hr style="border:0.5px solid #333; margin: 20px 0;">
-                    <button class="admin-btn" style="background: #666;" onclick="resetToOfficialManually()">跳過試玩</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <div id="celebrate-overlay" onclick="this.style.display='none'">
+    <div id="celebrate-overlay" onclick="handleCelebrationClick()">
         <h2 style="color: var(--primary-gold); font-size: 3em;">CONGRATULATIONS</h2>
         <h3 id="celeb-prize" style="font-size: 2em; margin: 10px 0;"></h3>
         <h1 id="celeb-name" style="font-size: 6em; color: white; text-shadow: 0 0 50px var(--primary-gold);"></h1>
@@ -187,19 +226,32 @@
     <script>
         let state = {
             names: [], prizes: [], winners: [], currentPrizeIdx: null,
-            isTrialMode: true, trialCount: 0, isBonusMode: false,
-            masterNames: [], masterPrizes: []
+            isBonusMode: false, masterNames: [], masterPrizes: [],
+            shouldShowEndAfterClick: false 
         };
 
+        const sfxTick = document.getElementById('sfx-tick');
+        const sfxWin = document.getElementById('sfx-win');
+        const sfxBonus = document.getElementById('sfx-bonus');
+        const sfxEnd = document.getElementById('sfx-end');
+
+        function playSound(audio, volume = 0.5) {
+            if(!audio) return;
+            if(audio.id === 'sfx-end') { sfxBonus.pause(); sfxWin.pause(); }
+            audio.volume = volume;
+            audio.currentTime = 0;
+            audio.play().catch(e => console.log("音效播放被阻擋"));
+        }
+
         window.onload = () => {
-            const saved = localStorage.getItem('lucky_draw_state_final_v5'); // 升級版本號避免衝突
+            const saved = localStorage.getItem('lucky_draw_state_final_v6');
             if (saved) {
                 state = JSON.parse(saved);
                 renderPrizes(); renderHistory(); updateStats(); updateModeUI();
             }
         };
 
-        function saveToLocal() { localStorage.setItem('lucky_draw_state_final_v5', JSON.stringify(state)); }
+        function saveToLocal() { localStorage.setItem('lucky_draw_state_final_v6', JSON.stringify(state)); }
 
         function openAdmin() {
             document.getElementById('admin-modal').style.display = 'block';
@@ -217,14 +269,13 @@
             saveToLocal(); updateStats(); alert('名單已更新！');
         }
 
-        // --- 修正處：新增獎項時同時同步到備份中 ---
         function addPrize() {
             const name = document.getElementById('new-p-name').value;
             const count = parseInt(document.getElementById('new-p-count').value);
             if (name && count > 0) {
                 const prizeObj = { name, total: count, remaining: count };
                 state.prizes.push(prizeObj);
-                state.masterPrizes.push(JSON.parse(JSON.stringify(prizeObj))); // 同步備份
+                state.masterPrizes.push(JSON.parse(JSON.stringify(prizeObj)));
                 saveToLocal(); renderAdminPrizes(); renderPrizes();
             }
         }
@@ -239,17 +290,11 @@
             `).join('');
         }
 
-        // --- 修正處：刪除獎項時同時從備份中刪除 ---
-        function deletePrize(i) { 
-            state.prizes.splice(i, 1); 
-            state.masterPrizes.splice(i, 1); // 同步備份
-            saveToLocal(); renderAdminPrizes(); renderPrizes(); 
-        }
+        function deletePrize(i) { state.prizes.splice(i, 1); state.masterPrizes.splice(i, 1); saveToLocal(); renderAdminPrizes(); renderPrizes(); }
 
         function updateModeUI() {
             const badge = document.getElementById('mode-badge');
-            if (state.isBonusMode) { badge.innerText = "🔥 全員加碼挑戰賽 🔥"; badge.className = "mode-bonus"; }
-            else if (state.isTrialMode) { badge.innerText = `試玩模式 (${state.trialCount} / 6)`; badge.className = "mode-trial"; }
+            if (state.isBonusMode) { badge.innerText = "🔥 警報：全員加碼賽 🔥"; badge.className = "mode-bonus"; }
             else { badge.innerText = "正式抽獎模式"; badge.className = "mode-official"; }
         }
 
@@ -278,78 +323,112 @@
             renderPrizes();
         }
 
+        function startBonusDrawSequence() {
+            const bonusObj = { name: "加碼獎金 10,000 元", total: 1, remaining: 1 };
+            state.prizes.push(bonusObj);
+            state.currentPrizeIdx = state.prizes.length - 1;
+            document.getElementById('bonus-prize-modal').style.display = 'none';
+            document.getElementById('target-prize-name').innerText = bonusObj.name;
+            document.getElementById('target-prize-count').innerText = `剩餘名額：1`;
+            renderPrizes();
+            const grid = document.getElementById('grid-stage');
+            grid.innerHTML = state.names.map((name, idx) => `<div class="name-tag" id="tag-${idx}">${name}</div>`).join('');
+            document.getElementById('start-btn').disabled = false;
+            document.getElementById('start-btn').innerText = `開始加碼抽選！`;
+        }
+
         async function runSurvival() {
             const p = state.prizes[state.currentPrizeIdx];
             document.getElementById('start-btn').disabled = true;
             let activeIndices = state.names.map((_, i) => i);
+            
             while (activeIndices.length > 1) {
                 const pick = Math.floor(Math.random() * activeIndices.length);
                 const victimIdx = activeIndices.splice(pick, 1)[0];
                 document.getElementById(`tag-${victimIdx}`).classList.add('eliminated');
+                playSound(sfxTick, 0.5);
                 let delay = activeIndices.length > 10 ? 100 : 800; 
                 await new Promise(r => setTimeout(r, delay));
             }
+
             const winName = state.names[activeIndices[0]];
             document.getElementById(`tag-${activeIndices[0]}`).classList.add('winner-glow');
+            playSound(sfxWin, 0.7);
+
             setTimeout(() => {
-                showCelebration(p.name + (state.isTrialMode ? " (試玩)" : ""), winName);
+                showCelebration(p.name, winName);
                 launchFireworks();
-                if (state.isTrialMode) {
-                    state.trialCount++; p.remaining--;
-                    state.winners.push({ name: winName + " (試玩)", prize: p.name, time: "試玩" });
-                    if (state.trialCount >= 6) { setTimeout(() => { alert("試玩結束！進入正式模式。"); resetToOfficial(); }, 2000); }
-                } else {
-                    p.remaining--;
-                    state.winners.push({ name: winName, prize: p.name, time: new Date().toLocaleTimeString() });
-                    state.names = state.names.filter(n => n !== winName);
-                }
-                state.currentPrizeIdx = null; saveToLocal(); renderHistory(); updateStats(); renderPrizes(); updateModeUI();
                 
-                if (!state.isTrialMode && state.prizes.every(p => p.remaining === 0)) {
-                    if (state.isBonusMode) {
-                        setTimeout(() => { document.getElementById('end-thank-you').style.display = 'flex'; }, 4000);
-                    } else {
-                        setTimeout(() => { document.getElementById('bonus-announcement').style.display = 'flex'; }, 4000);
-                    }
+                p.remaining--;
+                state.winners.push({ name: winName, prize: p.name, time: new Date().toLocaleTimeString() });
+                state.names = state.names.filter(n => n !== winName);
+
+                saveToLocal(); renderHistory(); updateStats(); renderPrizes(); updateModeUI();
+                
+                if (state.isBonusMode) {
+                    state.shouldShowEndAfterClick = true;
+                } else if (state.prizes.every(p => p.remaining === 0)) {
+                    state.shouldShowEndAfterClick = false; 
                 }
             }, 1000);
         }
 
-        function prepareBonusRound() {
-            const excludedKeywords = ["頭獎", "二獎", "三獎"];
-            const bigWinners = state.winners
-                .filter(w => excludedKeywords.some(k => w.prize.includes(k)))
-                .map(w => w.name);
-            const eligiblePeople = state.masterNames.filter(name => !bigWinners.includes(name));
-            if (eligiblePeople.length === 0) {
-                alert("所有人中過大獎，無法加碼。");
-                document.getElementById('bonus-announcement').style.display = 'none';
-                return;
+        function handleCelebrationClick() {
+            document.getElementById('celebrate-overlay').style.display = 'none';
+
+            if (state.isBonusMode && state.shouldShowEndAfterClick) {
+                document.getElementById('end-thank-you').style.display = 'flex'; 
+                playSound(sfxEnd, 0.7);
+                state.shouldShowEndAfterClick = false; 
+            } 
+            else if (!state.isBonusMode && state.prizes.every(pr => pr.remaining === 0)) {
+                document.getElementById('bonus-announcement').style.display = 'flex';
+                playSound(sfxBonus, 1.0); 
             }
+        }
+
+        function prepareBonusRound() {
+            const bigWinners = state.winners
+                .filter(w => ["頭獎", "二獎", "三獎"].some(k => w.prize.includes(k)))
+                .map(w => w.name);
+            
+            const eligiblePeople = state.masterNames.filter(name => !bigWinners.includes(name));
             state.isBonusMode = true;
             state.names = [...eligiblePeople];
             document.getElementById('bonus-announcement').style.display = 'none';
             document.getElementById('grid-stage').innerHTML = "";
-            document.getElementById('target-prize-name').innerText = "加碼戰場：全體復活 (已排除大獎得主)";
             updateModeUI(); updateStats();
-            alert(`加碼戰場準備！共有 ${eligiblePeople.length} 人。`);
+            const container = document.getElementById('bonus-list-container');
+            container.innerHTML = state.names.map(name => `<div class="participant-name">${name}</div>`).join('');
+            document.getElementById('bonus-prize-modal').style.display = 'block';
             saveToLocal();
         }
 
-        // --- 這裡會從備份 (masterNames & masterPrizes) 還原數據 ---
         function resetToOfficial() {
-            state.isTrialMode = false; state.isBonusMode = false; state.trialCount = 0; state.winners = [];
+            state.isBonusMode = false; state.winners = [];
             state.names = [...state.masterNames];
-            // 關鍵處：從備份中深度複製回主獎項列表
             state.prizes = JSON.parse(JSON.stringify(state.masterPrizes));
-            
             saveToLocal(); renderHistory(); updateStats(); renderPrizes(); updateModeUI();
             document.getElementById('grid-stage').innerHTML = "";
             document.getElementById('start-btn').disabled = true;
+            document.getElementById('target-prize-name').innerText = "請選擇獎項";
+            document.getElementById('target-prize-count').innerText = "剩餘名額：-";
+            document.getElementById('end-thank-you').style.display = 'none';
+            document.getElementById('bonus-announcement').style.display = 'none';
+            document.getElementById('celebrate-overlay').style.display = 'none';
+            document.getElementById('bonus-prize-modal').style.display = 'none';
+            sfxEnd.pause(); sfxEnd.currentTime = 0;
         }
 
-        function resetToOfficialManually() { if(confirm("跳過試玩？將會重置中獎紀錄並還原名單與獎項名額。")) { resetToOfficial(); closeAdmin(); } }
+        function manualReset() {
+            if(confirm("確定要重新開始抽獎嗎？")) {
+                resetToOfficial();
+            }
+        }
+
+        function resetGameKeepData() { if(confirm("確定要重新開始抽獎嗎？")) { resetToOfficial(); } }
         function showCelebration(prize, name) { document.getElementById('celeb-prize').innerText = prize; document.getElementById('celeb-name').innerText = name; document.getElementById('celebrate-overlay').style.display = 'flex'; }
+
         function launchFireworks() {
             var duration = 3 * 1000; var animationEnd = Date.now() + duration;
             var defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 1001 };
@@ -366,8 +445,11 @@
             const list = document.getElementById('history-list');
             list.innerHTML = state.winners.map(w => `<li><span style="color:var(--primary-gold)">[${w.prize}]</span> <span>${w.name}</span></li>`).reverse().join('');
         }
-        function updateStats() { document.getElementById('stat-rem').innerText = state.names.length; document.getElementById('stat-win').innerText = state.winners.filter(w => !w.name.includes("(試玩)")).length; }
-        function clearHistory() { if(confirm('警告：這將永久刪除本地緩存數據。')) { localStorage.clear(); location.reload(); } }
+        function updateStats() { 
+            document.getElementById('stat-rem').innerText = state.names.length; 
+            document.getElementById('stat-win').innerText = state.winners.length; 
+        }
+        function clearHistory() { if(confirm('警告：將清空紀錄。')) { localStorage.clear(); location.reload(); } }
     </script>
 </body>
 </html>
