@@ -177,7 +177,7 @@
 
     <div id="bonus-announcement">
         <div class="big-text" style="text-shadow: 0 0 30px #ff0000; color: #fff;">🚨 緊急加碼 🚨</div>
-        <h2 style="color: #FFD700; margin: 20px 0; font-size: 2.5em;">除了頭獎、二獎及三獎得主，其餘全員進入戰場！</h2>
+        <h2 style="color: #FFD700; margin: 20px 0; font-size: 2.5em;">除了頭獎、貳獎及參獎得主，其餘全員進入戰場！</h2>
         <button class="btn-action" onclick="prepareBonusRound()" style="background: linear-gradient(45deg, #ff0000, #aa0000); color: white;">進入加碼生死戰</button>
     </div>
 
@@ -197,12 +197,12 @@
             <hr style="border: 0.5px solid #333;">
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
                 <div>
-                    <h3>👥 人員名單匯入</h3>
+                    <h3>👥 人員名單匯入 (當前已內建)</h3>
                     <textarea id="admin-names" rows="15"></textarea>
                     <button class="admin-btn" style="width: 100%; margin-top: 10px;" onclick="saveNames()">更新名單</button>
                 </div>
                 <div>
-                    <h3>🎁 獎項管理</h3>
+                    <h3>🎁 獎項管理 (當前已內建)</h3>
                     <div style="display: flex; gap: 5px;">
                         <input type="text" id="new-p-name" placeholder="獎項名稱">
                         <input type="number" id="new-p-count" placeholder="名額" style="width: 80px;">
@@ -224,6 +224,27 @@
     <div id="settings-trigger" onclick="openAdmin()">⚙️</div>
 
     <script>
+        // ==========================================
+        // 🧧 1. 直接在這裡輸入你的名單 (用引號包起來，逗號隔開)
+        // ==========================================
+        const defaultNamesList = [
+            "鄭文瑄", "王泓仁", "張芸溶", "林勝雄", "黃家儒", 
+            "王譯寬", "曹宇傑", "白宜欣", "陳又詳", "陳怡娟",
+            "賴承暘", "黃允斌", "葉怡慧"
+        ];
+
+        // ==========================================
+        // 🎁 2. 直接在這裡輸入你的獎項與數量
+        // ==========================================
+        const defaultPrizesList = [
+            { name: "哈哈獎 - 獎金 3000 元", total: 6, remaining: 6 },
+            { name: "伍獎 - 獎金 6000 元", total: 2, remaining: 2 },
+            { name: "肆獎 - 獎金 8000 元", total: 2, remaining: 2 },
+            { name: "參獎 - 獎金 10000 元", total: 1, remaining: 1 },
+            { name: "貳獎 - 獎金 20000 元", total: 1, remaining: 1 },
+            { name: "頭獎 - 獎金 30000 元", total: 1, remaining: 1 }
+        ];
+
         let state = {
             names: [], prizes: [], winners: [], currentPrizeIdx: null,
             isBonusMode: false, masterNames: [], masterPrizes: [],
@@ -247,8 +268,14 @@
             const saved = localStorage.getItem('lucky_draw_state_final_v6');
             if (saved) {
                 state = JSON.parse(saved);
-                renderPrizes(); renderHistory(); updateStats(); updateModeUI();
+            } else {
+                // 如果沒有緩存，直接讀取內建名單
+                state.masterNames = [...defaultNamesList];
+                state.names = [...defaultNamesList];
+                state.masterPrizes = JSON.parse(JSON.stringify(defaultPrizesList));
+                state.prizes = JSON.parse(JSON.stringify(defaultPrizesList));
             }
+            renderPrizes(); renderHistory(); updateStats(); updateModeUI();
         };
 
         function saveToLocal() { localStorage.setItem('lucky_draw_state_final_v6', JSON.stringify(state)); }
@@ -341,7 +368,6 @@
             const p = state.prizes[state.currentPrizeIdx];
             document.getElementById('start-btn').disabled = true;
             let activeIndices = state.names.map((_, i) => i);
-            
             while (activeIndices.length > 1) {
                 const pick = Math.floor(Math.random() * activeIndices.length);
                 const victimIdx = activeIndices.splice(pick, 1)[0];
@@ -350,7 +376,6 @@
                 let delay = activeIndices.length > 10 ? 100 : 800; 
                 await new Promise(r => setTimeout(r, delay));
             }
-
             const winName = state.names[activeIndices[0]];
             document.getElementById(`tag-${activeIndices[0]}`).classList.add('winner-glow');
             playSound(sfxWin, 0.7);
@@ -358,11 +383,9 @@
             setTimeout(() => {
                 showCelebration(p.name, winName);
                 launchFireworks();
-                
                 p.remaining--;
                 state.winners.push({ name: winName, prize: p.name, time: new Date().toLocaleTimeString() });
                 state.names = state.names.filter(n => n !== winName);
-
                 saveToLocal(); renderHistory(); updateStats(); renderPrizes(); updateModeUI();
                 
                 if (state.isBonusMode) {
@@ -375,7 +398,6 @@
 
         function handleCelebrationClick() {
             document.getElementById('celebrate-overlay').style.display = 'none';
-
             if (state.isBonusMode && state.shouldShowEndAfterClick) {
                 document.getElementById('end-thank-you').style.display = 'flex'; 
                 playSound(sfxEnd, 0.7);
@@ -389,9 +411,8 @@
 
         function prepareBonusRound() {
             const bigWinners = state.winners
-                .filter(w => ["頭獎", "二獎", "三獎"].some(k => w.prize.includes(k)))
+                .filter(w => ["頭獎", "貳獎", "參獎"].some(k => w.prize.includes(k)))
                 .map(w => w.name);
-            
             const eligiblePeople = state.masterNames.filter(name => !bigWinners.includes(name));
             state.isBonusMode = true;
             state.names = [...eligiblePeople];
@@ -406,8 +427,12 @@
 
         function resetToOfficial() {
             state.isBonusMode = false; state.winners = [];
-            state.names = [...state.masterNames];
-            state.prizes = JSON.parse(JSON.stringify(state.masterPrizes));
+            // 使用硬編碼的名單恢復
+            state.masterNames = [...defaultNamesList];
+            state.names = [...defaultNamesList];
+            state.masterPrizes = JSON.parse(JSON.stringify(defaultPrizesList));
+            state.prizes = JSON.parse(JSON.stringify(defaultPrizesList));
+            
             saveToLocal(); renderHistory(); updateStats(); renderPrizes(); updateModeUI();
             document.getElementById('grid-stage').innerHTML = "";
             document.getElementById('start-btn').disabled = true;
@@ -421,7 +446,7 @@
         }
 
         function manualReset() {
-            if(confirm("確定要重新開始抽獎嗎？")) {
+            if(confirm("確定要重新開始抽獎嗎？這會清除中獎紀錄，並還原至預設名單與獎項。")) {
                 resetToOfficial();
             }
         }
